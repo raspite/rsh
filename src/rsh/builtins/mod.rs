@@ -1,5 +1,5 @@
 use rsh::State;
-use std::collection:HashMap;
+use std::collections::HashMap;
 
 pub type Builtin = fn(State) -> State;
 

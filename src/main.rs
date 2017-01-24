@@ -1,4 +1,4 @@
-pub mod rsh;
+mod rsh;
 
 use std::env;
 
