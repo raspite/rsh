@@ -11,8 +11,8 @@ pub struct State {
     builtins: HashMap<String, builtins::Builtin>,
     environment: HashMap<String, String>,
     aliases: HashMap<String, String>,
-    argv: Vec<str>,
-    argc: i32,
+    argv: Vec<String>,
+    argc: usize,
 }
 
 impl State {
@@ -41,8 +41,11 @@ pub fn run(mut s: State) {
         // read the user input
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
-        s.argv = input.split_whitespace().collect();
-        s.argc = s.argv.size();
+
+        s.argv = input.split_whitespace().
+            map(|s| s.to_string() ).
+            collect();
+        s.argc = s.argv.len();
 
         print!("\n");
         println!("Input: {}\nState: {:?}", input, s);
