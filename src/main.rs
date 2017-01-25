@@ -9,6 +9,6 @@ fn main() {
         next().
         unwrap_or(".".to_string());
 
-    let s = rsh::State::new(path);
+    let mut s = rsh::State::new(path);
     rsh::run(s)
 }
