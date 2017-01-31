@@ -70,18 +70,21 @@ fn parse_args(args: &String) -> Vec<String> {
     let mut build_string: String = String::from("");
     for string in args.split_whitespace() {
         if string.starts_with("\"") {
+            // the string is surrounded by quotes - "word"
             if string.ends_with("\"") {
                 build_string.push_str(string);
                 result.push(build_string);
 
                 building_string = false;
                 build_string = String::from("");
+            // the string only begins with quote - "word
             } else {
                 building_string = true;
 
                 build_string.push_str(string);
                 build_string.push(' ');
             }
+        // the string ends with quote - word"
         } else if string.ends_with("\"") {
             build_string.push_str(string);
             result.push(build_string);
@@ -89,9 +92,11 @@ fn parse_args(args: &String) -> Vec<String> {
             building_string = false;
             build_string = String::from("");
         } else {
+            // the string is inside a quote section
             if building_string {
                 build_string.push_str(string);
                 build_string.push(' ');
+            // the string is not inside a quote section
             } else {
                 result.push(string.to_string());
             }
