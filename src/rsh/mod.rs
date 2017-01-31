@@ -4,11 +4,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::io;
 use std::io::{Read, Write};
+use std::collections::hash_map::Entry;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct State {
     cwd: PathBuf,
-    builtins: HashMap<String, builtins::Builtin>,
     environment: HashMap<String, String>,
     aliases: HashMap<String, String>,
     argv: Vec<String>,
@@ -19,7 +19,6 @@ impl State {
     pub fn new(cwd: String) -> State {
         State{
             cwd: PathBuf::from(cwd),
-            builtins: builtins::load(),
             environment: HashMap::new(),
             aliases: HashMap::new(),
             argv: Vec::new(),
@@ -28,7 +27,10 @@ impl State {
     }
 }
 
-pub fn run(mut s: State) {
+pub fn run(initial_state: State) {
+    let mut builtins = builtins::load();
+    let mut s = initial_state.clone();
+
     println!("Welcome to rsh! {:?}", s);
 
     loop {
@@ -49,5 +51,11 @@ pub fn run(mut s: State) {
 
         print!("\n");
         println!("Input: {}\nState: {:?}", input, s);
+
+        let first_arg = s.argv.get(0).unwrap().clone();
+        if let Entry::Occupied(f) = builtins.entry(String::from(first_arg)) {
+            let bn = f.get();
+            let newS = bn(s.clone());
+        }
     }
 }
