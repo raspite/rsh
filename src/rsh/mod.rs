@@ -55,7 +55,7 @@ pub fn run(initial_state: State) {
         let first_arg = s.argv.get(0).unwrap().clone();
         if let Entry::Occupied(f) = builtins.entry(String::from(first_arg)) {
             let bn = f.get();
-            let newS = bn(s.clone());
+            s = bn(s.clone());
         }
     }
 }
