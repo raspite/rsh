@@ -17,7 +17,7 @@ pub struct State {
 
 impl State {
     pub fn new(cwd: String) -> State {
-        State{
+        State {
             cwd: PathBuf::from(cwd),
             environment: HashMap::new(),
             aliases: HashMap::new(),
@@ -35,6 +35,7 @@ pub fn run(initial_state: State) {
 
     loop {
 
+        print!("\n");
         print!("{} -> ", s.cwd.to_str().unwrap());
 
         // this forces the prompt to print
@@ -44,9 +45,9 @@ pub fn run(initial_state: State) {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
 
-        s.argv = input.split_whitespace().
-            map(|s| s.to_string() ).
-            collect();
+        s.argv = input.split_whitespace()
+            .map(|s| s.to_string())
+            .collect();
         s.argc = s.argv.len();
 
         print!("\n");
