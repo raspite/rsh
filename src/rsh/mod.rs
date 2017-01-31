@@ -45,9 +45,7 @@ pub fn run(initial_state: State) {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
 
-        s.argv = input.split_whitespace()
-            .map(|s| s.to_string())
-            .collect();
+        s.argv = parse_args(&input);
         s.argc = s.argv.len();
 
         print!("\n");
@@ -59,4 +57,17 @@ pub fn run(initial_state: State) {
             s = bn(s.clone());
         }
     }
+}
+
+fn parse_args(args: &String) -> Vec<String> {
+    let mut result: Vec<String> = vec!["test".to_string()];
+    result
+}
+
+#[test]
+fn parse_args_test() {
+    let args = String::from("echo -n \"Hello World\"");
+    let result = parse_args(&args);
+    let expected = vec!["echo".to_string(), "-n".into(), "\"Hello World\"".into()];
+    assert_eq!(result, expected);
 }
