@@ -9,7 +9,7 @@ pub fn load() -> HashMap<String, Builtin> {
     let mut h = HashMap::new();
 
     h.insert("cd".to_string(), cd as fn(State) -> State);
-
+    h.insert("echo".to_string(), echo as fn(State) -> State);
     // h.insert("ls".to_string(), ls as fn(State) -> State);
 
     h
