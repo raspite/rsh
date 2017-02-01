@@ -96,23 +96,26 @@ fn parse_args(args: &String) -> Vec<String> {
 }
 
 fn parse_string_into_args(string: &String, parse_result: &mut ParseResult) {
-    let mut build_string: String = parse_result.build_string.clone();
+    let &mut ParseResult { ref mut build_string,
+                           ref mut build_type,
+                           ref mut completed,
+                           ref mut result } = parse_result;
     let mut iter = string.chars().peekable();
 
     while let Some(c) = iter.next() {
         match c {
             '\'' => {
-                match parse_result.build_type {
+                match *build_type {
                     BuildType::Single => {
-                        parse_result.build_type = BuildType::None;
+                        *build_type = BuildType::None;
                         if iter.peek() == Some(&' ') {
-                            parse_result.result.push(build_string);
-                            build_string = String::from("");
+                            result.push(build_string.clone());
+                            *build_string = String::from("");
                         }
                     }
 
                     BuildType::None => {
-                        parse_result.build_type = BuildType::Single;
+                        *build_type = BuildType::Single;
                     }
 
                     _ => {
@@ -122,17 +125,17 @@ fn parse_string_into_args(string: &String, parse_result: &mut ParseResult) {
             }
 
             '\"' => {
-                match parse_result.build_type {
+                match *build_type {
                     BuildType::Double => {
-                        parse_result.build_type = BuildType::None;
+                        *build_type = BuildType::None;
                         if iter.peek() == Some(&' ') {
-                            parse_result.result.push(build_string);
-                            build_string = String::from("");
+                            result.push(build_string.clone());
+                            *build_string = String::from("");
                         }
                     }
 
                     BuildType::None => {
-                        parse_result.build_type = BuildType::Double;
+                        *build_type = BuildType::Double;
                     }
 
                     _ => {
@@ -142,10 +145,10 @@ fn parse_string_into_args(string: &String, parse_result: &mut ParseResult) {
             }
 
             ' ' => {
-                match parse_result.build_type {
+                match *build_type {
                     BuildType::None => {
-                        parse_result.result.push(build_string);
-                        build_string = String::from("");
+                        result.push(build_string.clone());
+                        *build_string = String::from("");
                     }
 
                     _ => {
@@ -160,11 +163,9 @@ fn parse_string_into_args(string: &String, parse_result: &mut ParseResult) {
         }
     }
 
-    if parse_result.build_type == BuildType::None {
-        parse_result.result.push(build_string);
-        parse_result.completed = true;
-    } else {
-        parse_result.build_string = build_string;
+    if *build_type == BuildType::None {
+        result.push(build_string.clone());
+        *completed = true;
     }
 }
 
