@@ -173,6 +173,13 @@ fn parse_string_into_vec(string: &String, parse_result: &mut ParseResult) {
                 }
             }
 
+            '\n' => {
+                match iter.peek() {
+                    Some(_) => build_string.push(c),
+                    None => {}
+                }
+            }
+
             _ => {
                 build_string.push(c);
             }
@@ -180,9 +187,11 @@ fn parse_string_into_vec(string: &String, parse_result: &mut ParseResult) {
     }
 
     if *build_type == BuildType::None {
-        result.push(build_string.clone());
         *completed = true;
     }
+
+    result.push(build_string.clone());
+    *build_string = String::from("");
 }
 
 #[test]
