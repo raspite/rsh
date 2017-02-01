@@ -59,37 +59,60 @@ pub fn run(initial_state: State) {
     }
 }
 
+#[derive(PartialEq)]
+enum BuildType {
+    None,
+    Single,
+    Double,
+}
+
+struct ParseResult {
+    result: Vec<String>,
+    completed: bool,
+    build_string: String,
+    build_type: BuildType,
+}
+
 fn parse_args(args: &String) -> Vec<String> {
-    let mut result: Vec<String> = Vec::new();
+    let mut parse_result: ParseResult = ParseResult {
+        result: Vec::new(),
+        completed: false,
+        build_string: String::from(""),
+        build_type: BuildType::None,
+    };
 
     if args.len() == 0 {
-        return result;
+        return parse_result.result;
     }
 
-    enum BuildType {
-        None,
-        Single,
-        Double,
-    }
+    parse_string_into_args(&args, &mut parse_result);
 
-    let mut build_type: BuildType = BuildType::None;
-    let mut build_string: String = String::from("");
-    let mut iter = args.chars().peekable();
+    let result: Vec<String> = parse_result.result
+        .into_iter()
+        .filter(|s| s.len() > 0)
+        .collect();
+
+    result
+}
+
+fn parse_string_into_args(string: &String, parse_result: &mut ParseResult) {
+    let mut build_string: String = parse_result.build_string.clone();
+    let mut iter = string.chars().peekable();
 
     while let Some(c) = iter.next() {
         match c {
             '\'' => {
-                match build_type {
+                match parse_result.build_type {
                     BuildType::Single => {
-                        build_type = BuildType::None;
+                        parse_result.build_type = BuildType::None;
                         if iter.peek() == Some(&' ') {
-                            result.push(build_string);
+                            parse_result.result.push(build_string);
                             build_string = String::from("");
                         }
                     }
 
                     BuildType::None => {
-                        build_type = BuildType::Single;
+                        parse_result.build_type = BuildType::Single;
                     }
 
                     _ => {
@@ -99,17 +122,17 @@ fn parse_args(args: &String) -> Vec<String> {
             }
 
             '\"' => {
-                match build_type {
+                match parse_result.build_type {
                     BuildType::Double => {
-                        build_type = BuildType::None;
+                        parse_result.build_type = BuildType::None;
                         if iter.peek() == Some(&' ') {
-                            result.push(build_string);
+                            parse_result.result.push(build_string);
                             build_string = String::from("");
                         }
                     }
 
                     BuildType::None => {
-                        build_type = BuildType::Double;
+                        parse_result.build_type = BuildType::Double;
                     }
 
                     _ => {
@@ -119,9 +142,9 @@ fn parse_args(args: &String) -> Vec<String> {
             }
 
             ' ' => {
-                match build_type {
+                match parse_result.build_type {
                     BuildType::None => {
-                        result.push(build_string);
+                        parse_result.result.push(build_string);
                         build_string = String::from("");
                     }
 
@@ -137,15 +160,12 @@ fn parse_args(args: &String) -> Vec<String> {
         }
     }
 
-    if build_string.len() > 0 {
-        result.push(build_string);
+    if parse_result.build_type == BuildType::None {
+        parse_result.result.push(build_string);
+        parse_result.completed = true;
+    } else {
+        parse_result.build_string = build_string;
     }
-
-    result = result.into_iter()
-        .filter(|s| s.len() > 0)
-        .collect();
-
-    result
 }
 
 #[test]
