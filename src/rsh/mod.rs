@@ -85,7 +85,13 @@ fn parse_args(args: &String) -> Vec<String> {
         return parse_result.result;
     }
 
-    parse_string_into_vec(&args, &mut parse_result);
+    loop {
+        parse_string_into_vec(&args, &mut parse_result);
+
+        if (parse_result.completed) {
+            break;
+        }
+    }
 
     let result: Vec<String> = parse_result.result
         .into_iter()
