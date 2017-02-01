@@ -85,7 +85,7 @@ fn parse_args(args: &String) -> Vec<String> {
         return parse_result.result;
     }
 
-    parse_string_into_args(&args, &mut parse_result);
+    parse_string_into_vec(&args, &mut parse_result);
 
     let result: Vec<String> = parse_result.result
         .into_iter()
@@ -95,7 +95,7 @@ fn parse_args(args: &String) -> Vec<String> {
     result
 }
 
-fn parse_string_into_args(string: &String, parse_result: &mut ParseResult) {
+fn parse_string_into_vec(string: &String, parse_result: &mut ParseResult) {
     let &mut ParseResult { ref mut build_string,
                            ref mut build_type,
                            ref mut completed,
