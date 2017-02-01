@@ -74,15 +74,18 @@ fn parse_args(args: &String) -> Vec<String> {
 
     let mut build_type: BuildType = BuildType::None;
     let mut build_string: String = String::from("");
+    let mut iter = args.chars().peekable();
 
-    for c in args.chars() {
+    while let Some(c) = iter.next() {
         match c {
             '\'' => {
                 match build_type {
                     BuildType::Single => {
                         build_type = BuildType::None;
-                        result.push(build_string);
-                        build_string = String::from("");
+                        if iter.peek() == Some(&' ') {
+                            result.push(build_string);
+                            build_string = String::from("");
+                        }
                     }
 
                     BuildType::None => {
@@ -99,8 +102,10 @@ fn parse_args(args: &String) -> Vec<String> {
                 match build_type {
                     BuildType::Double => {
                         build_type = BuildType::None;
-                        result.push(build_string);
-                        build_string = String::from("");
+                        if iter.peek() == Some(&' ') {
+                            result.push(build_string);
+                            build_string = String::from("");
+                        }
                     }
 
                     BuildType::None => {
@@ -159,24 +164,52 @@ fn parse_args_test() {
         assert_eq!(result, expected);
     }
 
-    // parse single-word string inside parens
+    // parse single-word string inside quotes
     {
         let expected = vec!["echo".to_string()];
         let result = parse_args(&String::from("\"echo\""));
         assert_eq!(result, expected);
     }
 
-    // parse multi-word string with closed parens section
+    // parse multi-word string with closed quotes section
     {
         let expected = vec!["echo".to_string(), "-n".into(), "Hello Dear World".into()];
         let result = parse_args(&String::from("echo -n \"Hello Dear World\""));
         assert_eq!(result, expected);
     }
 
-    // parse multi-word string with multiple closed parents sections
+    // parse multi-word string with multiple closed quotes sections
     {
         let expected = vec!["echo".to_string(), "Hello".into(), "Dear World".into()];
         let result = parse_args(&String::from("echo \"Hello\" \"Dear World\""));
+        assert_eq!(result, expected);
+    }
+
+    // parse multi-word string with no spaces around single quotes
+    {
+        let expected = vec!["echo".to_string(), "helloworld".into()];
+        let result = parse_args(&String::from("echo 'hello'world"));
+        assert_eq!(result, expected);
+    }
+
+    // parse multi-word string with no spaces around double quotes
+    {
+        let expected = vec!["echo".to_string(), "helloworld".into()];
+        let result = parse_args(&String::from("echo \"hello\"world"));
+        assert_eq!(result, expected);
+    }
+
+    // allow double quotes inside single quotes
+    {
+        let expected = vec!["\"".to_string()];
+        let result = parse_args(&String::from("'\"'"));
+        assert_eq!(result, expected);
+    }
+
+    // allow single quotes inside double quotes
+    {
+        let expected = vec!["\'".to_string()];
+        let result = parse_args(&String::from("\"\'\""));
         assert_eq!(result, expected);
     }
 }
