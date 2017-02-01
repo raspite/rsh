@@ -85,12 +85,22 @@ fn parse_args(args: &String) -> Vec<String> {
         return parse_result.result;
     }
 
+    let mut argstr = args.clone();
     loop {
-        parse_string_into_vec(&args, &mut parse_result);
+        parse_string_into_vec(&argstr, &mut parse_result);
 
         if (parse_result.completed) {
             break;
         }
+
+        match parse_result.build_type {
+            BuildType::Single => print!("quote> "),
+            BuildType::Double => print!("dquote> "),
+            _ => {}
+        }
+        io::stdout().flush();
+        argstr = String::from("");
+        io::stdin().read_line(&mut argstr).unwrap();
     }
 
     let result: Vec<String> = parse_result.result
