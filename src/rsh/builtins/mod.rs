@@ -1,76 +1,143 @@
-use rsh::State;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::slice::Iter;
 
-pub type Builtin = fn(State) -> State;
+use rsh::utils;
+use rsh::State;
+
+pub type Builtin = fn(&mut State) -> i32;
 
 pub fn load() -> HashMap<String, Builtin> {
     let mut h = HashMap::new();
 
-    h.insert("cd".to_string(), cd as fn(State) -> State);
-    // h.insert("ls".to_string(), ls as fn(State) -> State);
+    h.insert("cd".to_string(), cd as fn(&mut State) -> i32);
+    h.insert("ls".to_string(), ls as fn(&mut State) -> i32);
+    h.insert("echo".to_string(), echo as fn(&mut State) -> i32);
+    h.insert("set".to_string(), set as fn(&mut State) -> i32);
+    h.insert("unset".to_string(), unset as fn(&mut State) -> i32);
+    h.insert("get".to_string(), get as fn(&mut State) -> i32);
 
     h
 }
 
-fn cd(s: State) -> State {
+fn cd(s: &mut State) -> i32 {
     match s.argv.get(1) {
         Some(x) => {
-            let mut newS = s.clone();
+            let mut new_path = PathBuf::from(x);
 
-            newS.cwd = PathBuf::from(x);
-            return newS
-        },
-        None => s.clone(),
+            if new_path.has_root() {
+                s.cwd = new_path;
+                return 0;
+            }
+
+
+            match utils::make_absolute(new_path) {
+                Ok(p) => s.cwd = p,
+                Err(e) => {
+                    println!("cd: {}", e);
+                    return 1;
+                }
+            };
+
+
+            0
+        }
+        None => 0,
     }
 }
 
-//  fn ls<'a>(s: State) -> State {
-//      let dirs: Iter<String>;
+fn ls(s: &mut State) -> i32 {
+    if s.argv.len() == 1 {
+        list_dir(&s.cwd);
+        return 0;
+    }
 
-//      if s.argv.len() == 0 {
-//          let cwd = s.cwd.to_str().unwrap_or("").to_string();
-//          let mut args: &'a Vec<String>;
-//          args = Vec::new();
-//          args.push(cwd);
+    for d in s.argv.iter() {
+        let mut p = PathBuf::from(d);
+        list_dir(&p);
+    }
 
-//          dirs = args.iter();
-//      } else {
-//          let mut args = s.argv.clone().iter();
-//          args.next();
-//          dirs = args;
-//      }
+    0
+}
 
-//      for d in dirs {
-//          let mut p = PathBuf::from(d);
+fn list_dir(p: &PathBuf) {
+    // Cheking if file so we don't do extra processing
+    if p.is_file() {
+        println!("FILE: {}", p.to_str().unwrap_or("WTF"));
+        return;
+    }
 
-//          // Cheking if file so we don't do extra processing 
-//          if p.is_file() {
-//              println!("{}", p.to_str().unwrap_or(""));
-//              continue;
-//          }
+    // Unwrapping because we know it's a dir, not a file
+    for entry in p.read_dir().unwrap() {
+        match entry {
+            Ok(e) => {
+                // TODO replace this unwrap to something safer
+                print!("{} ", e.file_name().into_string().unwrap());
+            }
+            Err(e) => println!("Error: {}", e),
+        }
+    }
 
-//          // Unwrapping because we know it's a dir, not a file 
-//          for entry in p.read_dir().unwrap() {
-//              match entry {
-//                  Ok(e) => {
-//                      // TODO replace this unwrap to something safer
-//                      println!("{}", e.file_name().into_string().unwrap());
-//                  },
-//                  Err(e) => println!("Error: {}", e),
+    print!("\n");
+}
 
-//              }
-//          }
-//      }
+pub fn echo(s: &mut State) -> i32 {
+    if s.argv[1] == "-n" {
+        let strings = &s.argv[2..s.argv.len()].join(" ");
+        print!("{}", strings);
+    } else {
+        let strings = &s.argv[1..s.argv.len()].join(" ");
+        println!("{}", strings);
+    }
 
-//      s
-// }
+    0
+}
 
+fn set(s: &mut State) -> i32 {
 
+    let var_name = s.argv.get(1);
+    let value = s.argv.get(2);
 
+    if var_name.is_none() || value.is_none() {
+        println!("set: not enough arguments to set");
+        return 0;
+    }
 
+    let var = var_name.unwrap().clone();
+    let val = value.unwrap().clone();
 
+    s.variables.insert(var.to_string(), val.to_string());
 
+    0
+}
 
+fn unset(s: &mut State) -> i32 {
+    match s.argv.get(1) {
+        Some(var) => {
+            s.variables.remove(var);
 
+            0
+        }
+        None => {
+            println!("unset: not enough arguments");
+            1
+        }
+    }
+}
+
+fn get(s: &mut State) -> i32 {
+    match s.argv.get(1) {
+        Some(var) => {
+            s.variables
+                .get(var)
+                .map(|val| {
+                    println!("{}", val);
+                });
+        }
+        None => {
+            println!("get: not enough arguments"),   
+        },
+    };
+
+    0
+}
