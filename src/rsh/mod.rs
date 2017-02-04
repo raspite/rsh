@@ -1,10 +1,11 @@
 pub mod builtins;
+pub mod utils;
 
 use std::env;
 use std::path::PathBuf;
 
 use std::io;
-use std::io::{Read, Write};
+use std::io::Write;
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
@@ -12,7 +13,7 @@ use std::collections::hash_map::Entry;
 #[derive(Debug, Clone)]
 pub struct State {
     cwd: PathBuf,
-    environment: HashMap<String, String>,
+    variables: HashMap<String, String>,
     aliases: HashMap<String, String>,
     argv: Vec<String>,
     argc: usize,
@@ -22,8 +23,8 @@ pub struct State {
 impl State {
     pub fn new(cwd: String) -> State {
         State {
-            cwd: PathBuf::from(cwd),
-            environment: HashMap::new(),
+            cwd: utils::make_absolute(PathBuf::from(cwd)).unwrap(),
+            variables: HashMap::new(),
             aliases: HashMap::new(),
             argv: Vec::new(),
             argc: 0,
@@ -36,7 +37,7 @@ impl State {
             Ok(cwd) => {
                 State {
                     cwd: cwd,
-                    environment: HashMap::new(),
+                    variables: HashMap::new(),
                     aliases: HashMap::new(),
                     argv: Vec::new(),
                     argc: 0,
@@ -48,7 +49,7 @@ impl State {
     }
 
     pub fn env<'a>(&'a mut self, key: String, value: String) -> &'a mut State {
-        self.environment.insert(key, value);
+        self.variables.insert(key, value);
         self
     }
 
