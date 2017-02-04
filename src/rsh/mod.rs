@@ -1,9 +1,12 @@
 pub mod builtins;
 
-use std::collections::HashMap;
+use std::env;
 use std::path::PathBuf;
+
 use std::io;
 use std::io::{Read, Write};
+
+use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
 #[derive(PartialEq, Debug, Clone)]
@@ -25,6 +28,31 @@ impl State {
             argc: 0,
         }
     }
+
+    pub fn default() -> State {
+        match env::current_dir() {
+            Ok(cwd) => {
+                State {
+                    cwd: cwd,
+                    environment: HashMap::new(),
+                    aliases: HashMap::new(),
+                    argv: Vec::new(),
+                    argc: 0,
+                }
+            }
+            Err(e) => panic!(e),
+        }
+    }
+
+    pub fn env<'a>(&'a mut self, key: String, value: String) -> &'a mut State {
+        self.environment.insert(key, value);
+        self
+    }
+
+    pub fn alias<'a>(&'a mut self, alias: String, value: String) -> &'a mut State {
+        self.aliases.insert(alias, value);
+        self
+    }
 }
 
 pub fn run(initial_state: State) {
@@ -38,11 +66,15 @@ pub fn run(initial_state: State) {
         print!("{} -> ", s.cwd.to_str().unwrap());
 
         // this forces the prompt to print
-        io::stdout().flush();
+        io::stdout()
+            .flush()
+            .expect("unable to flush stdout");
 
         // read the user input
         let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
+        io::stdin()
+            .read_line(&mut input)
+            .expect("unable to read line from stdin");
 
         s.argv = input.split_whitespace().
             map(|s| s.to_string() ).
@@ -57,5 +89,90 @@ pub fn run(initial_state: State) {
             let bn = f.get();
             s = bn(s.clone());
         }
+    }
+}
+
+fn parse_args(args: &String) -> Vec<String> {
+    let mut result: Vec<String> = Vec::new();
+
+    if args.len() == 0 {
+        return result;
+    }
+
+    let mut building_string: bool = false;
+    let mut build_string: String = String::from("");
+    for string in args.split_whitespace() {
+        if string.starts_with("\"") {
+            // the string is surrounded by quotes - "word"
+            if string.ends_with("\"") {
+                build_string.push_str(string);
+                result.push(build_string);
+
+                building_string = false;
+                build_string = String::from("");
+                // the string only begins with quote - "word
+            } else {
+                building_string = true;
+
+                build_string.push_str(string);
+                build_string.push(' ');
+            }
+            // the string ends with quote - word"
+        } else if string.ends_with("\"") {
+            build_string.push_str(string);
+            result.push(build_string);
+
+            building_string = false;
+            build_string = String::from("");
+        } else {
+            // the string is inside a quote section
+            if building_string {
+                build_string.push_str(string);
+                build_string.push(' ');
+                // the string is not inside a quote section
+            } else {
+                result.push(string.to_string());
+            }
+        }
+    }
+
+    result
+}
+
+#[test]
+fn parse_args_test() {
+    // parse empty string
+    {
+        let expected: Vec<String> = Vec::new();
+        let result = parse_args(&String::from(""));
+        assert_eq!(result, expected);
+    }
+
+    // parse single-word string
+    {
+        let expected: Vec<String> = vec!["echo".to_string()];
+        let result = parse_args(&String::from("echo"));
+        assert_eq!(result, expected);
+    }
+
+    // parse single-word string inside parens
+    {
+        let expected = vec!["\"echo\"".to_string()];
+        let result = parse_args(&String::from("\"echo\""));
+        assert_eq!(result, expected);
+    }
+
+    // parse multi-word string with closed parens section
+    {
+        let expected = vec!["echo".to_string(), "-n".into(), "\"Hello Dear World\"".into()];
+        let result = parse_args(&String::from("echo -n \"Hello Dear World\""));
+        assert_eq!(result, expected);
+    }
+
+    // parse multi-word string with multiple closed parents sections
+    {
+        let expected = vec!["echo".to_string(), "\"Hello\"".into(), "\"Dear World\"".into()];
+        let result = parse_args(&String::from("echo \"Hello\" \"Dear World\""));
+        assert_eq!(result, expected);
     }
 }
