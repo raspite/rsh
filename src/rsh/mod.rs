@@ -9,7 +9,7 @@ use std::io::{Read, Write};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct State {
     cwd: PathBuf,
     environment: HashMap<String, String>,
