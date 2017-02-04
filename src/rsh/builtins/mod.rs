@@ -1,9 +1,8 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
-use std::slice::Iter;
 
-use rsh::utils;
 use rsh::State;
+use rsh::utils;
 
 pub type Builtin = fn(&mut State) -> i32;
 
@@ -23,7 +22,7 @@ pub fn load() -> HashMap<String, Builtin> {
 fn cd(s: &mut State) -> i32 {
     match s.argv.get(1) {
         Some(x) => {
-            let mut new_path = PathBuf::from(x);
+            let new_path = PathBuf::from(x);
 
             if new_path.has_root() {
                 s.cwd = new_path;
@@ -53,7 +52,7 @@ fn ls(s: &mut State) -> i32 {
     }
 
     for d in s.argv.iter() {
-        let mut p = PathBuf::from(d);
+        let p = PathBuf::from(d);
         list_dir(&p);
     }
 
@@ -133,11 +132,12 @@ fn get(s: &mut State) -> i32 {
                 .map(|val| {
                     println!("{}", val);
                 });
+
+            0
         }
         None => {
-            println!("get: not enough arguments"),   
-        },
-    };
-
-    0
+            println!("get: not enough arguments");
+            1
+        }
+    }
 }
