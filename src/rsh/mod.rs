@@ -174,9 +174,18 @@ fn parse_string_into_vec(string: &String, parse_result: &mut ParseResult) {
             }
 
             '\n' => {
-                match iter.peek() {
-                    Some(_) => build_string.push(c),
-                    None => {}
+                match *build_type {
+                    BuildType::None => {
+                        match iter.peek() {
+                            Some(_) => {
+                                build_string.push(c);
+                            }
+                            None => {}
+                        }
+                    }
+                    _ => {
+                        build_string.push(c);
+                    }
                 }
             }
 
@@ -188,10 +197,9 @@ fn parse_string_into_vec(string: &String, parse_result: &mut ParseResult) {
 
     if *build_type == BuildType::None {
         *completed = true;
+        result.push(build_string.clone());
+        *build_string = String::from("");
     }
-
-    result.push(build_string.clone());
-    *build_string = String::from("");
 }
 
 #[test]
@@ -256,6 +264,27 @@ fn parse_args_test() {
     {
         let expected = vec!["\'".to_string()];
         let result = parse_args(&String::from("\"\'\""));
+        assert_eq!(result, expected);
+    }
+
+    // handle multiple quote sections in succession
+    {
+        let expected = vec!["echo".to_string(), "hello world how are you".into()];
+        let result = parse_args(&String::from("echo \"hello world\"\' how are you\'"));
+        assert_eq!(result, expected);
+    }
+
+    // preserve newlines
+    {
+        let expected = vec!["echo".to_string(), "hello\nworld".into()];
+        let result = parse_args(&String::from("echo \"hello\nworld\""));
+        assert_eq!(result, expected);
+    }
+
+    // remove final newline
+    {
+        let expected = vec!["echo".to_string()];
+        let result = parse_args(&String::from("echo\n"));
         assert_eq!(result, expected);
     }
 }
