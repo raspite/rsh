@@ -16,6 +16,7 @@ pub struct State {
     aliases: HashMap<String, String>,
     argv: Vec<String>,
     argc: usize,
+    exit_status: i32,
 }
 
 impl State {
@@ -26,6 +27,7 @@ impl State {
             aliases: HashMap::new(),
             argv: Vec::new(),
             argc: 0,
+            exit_status: 0,
         }
     }
 
@@ -38,6 +40,7 @@ impl State {
                     aliases: HashMap::new(),
                     argv: Vec::new(),
                     argc: 0,
+                    exit_status: 0,
                 }
             }
             Err(e) => panic!(e),
@@ -87,7 +90,9 @@ pub fn run(initial_state: State) {
         let first_arg = s.argv.get(0).unwrap().clone();
         if let Entry::Occupied(f) = builtins.entry(String::from(first_arg)) {
             let bn = f.get();
-            s = bn(s.clone());
+            s.exit_status = bn(&mut s);
+            // prompt for input again.
+            continue;
         }
     }
 }
