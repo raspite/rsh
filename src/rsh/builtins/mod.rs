@@ -20,35 +20,36 @@ pub fn load() -> HashMap<String, Builtin> {
 }
 
 fn cd(s: &mut State) -> i32 {
+    let mut new_path: PathBuf;
+
     match s.argv.get(1) {
-        Some(x) => {
-            let new_path = PathBuf::from(x);
-
-            if new_path.has_root() {
-                s.cwd = new_path;
-                return 0;
-            }
-
-
-            match utils::make_absolute(new_path) {
-                Ok(p) => {
-                    if !p.exists() {
-                        return 1;
-                    }
-
-                    s.cwd = p;
-                }
-                Err(e) => {
-                    println!("cd: {}", e);
-                    return 1;
-                }
-            };
-
-
-            0
+        Some(x) => new_path = PathBuf::from(x),
+        None => {
+            new_path = PathBuf::from(s.variables
+                .get("HOME")
+                .unwrap_or(&"".to_string()))
         }
-        None => 0,
+    };
+
+    if !new_path.has_root() {
+        match utils::make_absolute(new_path) {
+            Ok(p) => new_path = p,
+            Err(e) => {
+                println!("cd: {}", e);
+                return 1;
+            }
+        };
     }
+
+    if !new_path.exists() {
+        println!("cd: no such file or directory");
+        return 1;
+    }
+
+
+    s.cwd = new_path;
+
+    0
 }
 
 fn ls(s: &mut State) -> i32 {
