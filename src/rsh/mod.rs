@@ -74,6 +74,10 @@ struct ParseResult {
 }
 
 fn parse_args(args: &String) -> Vec<String> {
+    if args.len() == 0 {
+        return Vec::new();
+    }
+
     let mut parse_result: ParseResult = ParseResult {
         result: Vec::new(),
         completed: false,
@@ -81,18 +85,9 @@ fn parse_args(args: &String) -> Vec<String> {
         build_type: BuildType::None,
     };
 
-    if args.len() == 0 {
-        return parse_result.result;
-    }
-
     let mut argstr = args.clone();
-    loop {
-        parse_string_into_vec(&argstr, &mut parse_result);
-
-        if (parse_result.completed) {
-            break;
-        }
-
+    parse_string_into_vec(&argstr, &mut parse_result);
+    while !parse_result.completed {
         match parse_result.build_type {
             BuildType::Single => print!("quote> "),
             BuildType::Double => print!("dquote> "),
@@ -101,6 +96,8 @@ fn parse_args(args: &String) -> Vec<String> {
         io::stdout().flush();
         argstr = String::from("");
         io::stdin().read_line(&mut argstr).unwrap();
+
+        parse_string_into_vec(&argstr, &mut parse_result);
     }
 
     let result: Vec<String> = parse_result.result
@@ -197,8 +194,9 @@ fn parse_string_into_vec(string: &String, parse_result: &mut ParseResult) {
 
     if *build_type == BuildType::None {
         *completed = true;
-        result.push(build_string.clone());
-        *build_string = String::from("");
+        if build_string.len() > 0 {
+            result.push(build_string.clone());
+        }
     }
 }
 
