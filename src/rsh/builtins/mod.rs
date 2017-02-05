@@ -31,7 +31,13 @@ fn cd(s: &mut State) -> i32 {
 
 
             match utils::make_absolute(new_path) {
-                Ok(p) => s.cwd = p,
+                Ok(p) => {
+                    if !p.exists() {
+                        return 1;
+                    }
+
+                    s.cwd = p;
+                }
                 Err(e) => {
                     println!("cd: {}", e);
                     return 1;
@@ -114,7 +120,6 @@ fn unset(s: &mut State) -> i32 {
     match s.argv.get(1) {
         Some(var) => {
             s.variables.remove(var);
-
             0
         }
         None => {
@@ -139,5 +144,99 @@ fn get(s: &mut State) -> i32 {
             println!("get: not enough arguments");
             1
         }
+    }
+}
+
+
+// TODO make these tests better once we can capture stdout
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_cd() {
+        let mut s = State::default();
+        s.argv = vec!["cd".to_string(), "/".to_string()];
+
+        let i = cd(&mut s);
+
+        assert_eq!(i, 0);
+        assert_eq!(s.cwd.to_str().unwrap(), "/");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_cd_bad_path() {
+        let mut s = State::default();
+        s.argv = vec!["cd".to_string(), "/123".to_string()];
+
+        let i = cd(&mut s);
+
+        assert_eq!(i, 0);
+    }
+
+    #[test]
+    fn test_set() {
+        let mut s = State::default();
+        s.argv = vec!["set".to_string(), "test".to_string(), "hello world".to_string()];
+
+        let i = set(&mut s);
+
+        assert_eq!(i, 0);
+        assert_eq!(s.variables.get("test").unwrap(), "hello world");
+    }
+
+    #[test]
+    fn test_unset() {
+        let mut s = State::default();
+        s.variables.insert("test".to_string(), "hello world".to_string());
+        s.argv = vec!["unset".to_string(), "test".to_string()];
+
+        let i = unset(&mut s);
+
+        assert_eq!(i, 0);
+        assert_eq!(s.variables.get("test"), None);
+    }
+
+    #[test]
+    fn test_get() {
+        let mut s = State::default();
+        s.variables.insert("test".to_string(), "hello world".to_string());
+        s.argv = vec!["get".to_string(), "test".to_string()];
+
+        let i = get(&mut s);
+
+        assert_eq!(i, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_get_failure() {
+        let mut s = State::default();
+        s.argv = vec!["get".to_string(), "test".to_string()];
+
+        let i = get(&mut s);
+
+        assert_eq!(i, 0);
+    }
+
+    #[test]
+    fn test_ls() {
+        let mut s = State::default();
+        s.argv = vec!["ls".to_string()];
+
+        let i = ls(&mut s);
+
+        assert_eq!(i, 0);
+    }
+
+    #[test]
+    fn test_echo() {
+        let mut s = State::default();
+        s.argv = vec!["echo".to_string(), "\"Hello world!\"".to_string()];
+
+        let i = get(&mut s);
+
+        assert_eq!(i, 0);
     }
 }
