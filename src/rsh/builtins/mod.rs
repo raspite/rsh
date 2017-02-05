@@ -210,17 +210,6 @@ mod test {
     }
 
     #[test]
-    #[should_panic]
-    fn test_get_failure() {
-        let mut s = State::default();
-        s.argv = vec!["get".to_string(), "test".to_string()];
-
-        let i = get(&mut s);
-
-        assert_eq!(i, 0);
-    }
-
-    #[test]
     fn test_ls() {
         let mut s = State::default();
         s.argv = vec!["ls".to_string()];
