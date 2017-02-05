@@ -7,14 +7,14 @@ use rsh::utils;
 pub type Builtin = fn(&mut State) -> i32;
 
 pub fn load() -> HashMap<String, Builtin> {
-    let mut h = HashMap::new();
+    let mut h: HashMap<String, Builtin> = HashMap::new();
 
-    h.insert("cd".to_string(), cd as fn(&mut State) -> i32);
-    h.insert("ls".to_string(), ls as fn(&mut State) -> i32);
-    h.insert("echo".to_string(), echo as fn(&mut State) -> i32);
-    h.insert("set".to_string(), set as fn(&mut State) -> i32);
-    h.insert("unset".to_string(), unset as fn(&mut State) -> i32);
-    h.insert("get".to_string(), get as fn(&mut State) -> i32);
+    h.insert("cd".to_string(), cd);
+    h.insert("ls".to_string(), ls);
+    h.insert("echo".to_string(), echo);
+    h.insert("set".to_string(), set);
+    h.insert("unset".to_string(), unset);
+    h.insert("get".to_string(), get);
 
     h
 }
