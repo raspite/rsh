@@ -1,4 +1,4 @@
-mod rsh;
+extern crate rsh;
 
 use std::env;
 
