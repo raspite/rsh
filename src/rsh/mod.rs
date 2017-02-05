@@ -1,29 +1,61 @@
 pub mod builtins;
+pub mod utils;
+
+use std::env;
+use std::path::PathBuf;
+
+use std::io;
+use std::io::Write;
 
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::io;
-use std::io::{Read, Write};
 use std::collections::hash_map::Entry;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct State {
     cwd: PathBuf,
-    environment: HashMap<String, String>,
+    variables: HashMap<String, String>,
     aliases: HashMap<String, String>,
     argv: Vec<String>,
     argc: usize,
+    exit_status: i32,
 }
 
 impl State {
     pub fn new(cwd: String) -> State {
         State {
-            cwd: PathBuf::from(cwd),
-            environment: HashMap::new(),
+            cwd: utils::make_absolute(PathBuf::from(cwd)).unwrap(),
+            variables: HashMap::new(),
             aliases: HashMap::new(),
             argv: Vec::new(),
             argc: 0,
+            exit_status: 0,
         }
+    }
+
+    pub fn default() -> State {
+        match env::current_dir() {
+            Ok(cwd) => {
+                State {
+                    cwd: cwd,
+                    variables: HashMap::new(),
+                    aliases: HashMap::new(),
+                    argv: Vec::new(),
+                    argc: 0,
+                    exit_status: 0,
+                }
+            }
+            Err(e) => panic!(e),
+        }
+    }
+
+    pub fn env<'a>(&'a mut self, key: String, value: String) -> &'a mut State {
+        self.variables.insert(key, value);
+        self
+    }
+
+    pub fn alias<'a>(&'a mut self, alias: String, value: String) -> &'a mut State {
+        self.aliases.insert(alias, value);
+        self
     }
 }
 
@@ -39,11 +71,15 @@ pub fn run(initial_state: State) {
         print!("{} -> ", s.cwd.to_str().unwrap());
 
         // this forces the prompt to print
-        io::stdout().flush();
+        io::stdout()
+            .flush()
+            .expect("unable to flush stdout");
 
         // read the user input
         let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
+        io::stdin()
+            .read_line(&mut input)
+            .expect("unable to read line from stdin");
 
         s.argv = parse_args(&input);
         s.argc = s.argv.len();
@@ -54,7 +90,9 @@ pub fn run(initial_state: State) {
         let first_arg = s.argv.get(0).unwrap().clone();
         if let Entry::Occupied(f) = builtins.entry(String::from(first_arg)) {
             let bn = f.get();
-            s = bn(s.clone());
+            s.exit_status = bn(&mut s);
+            // prompt for input again.
+            continue;
         }
     }
 }
@@ -86,13 +124,12 @@ fn parse_args(args: &String) -> Vec<String> {
     };
 
     let mut argstr = args.clone();
+
     parse_string_into_vec(&argstr, &mut parse_result);
+
     while !parse_result.completed {
-        match parse_result.build_type {
-            BuildType::Single => print!("quote> "),
-            BuildType::Double => print!("dquote> "),
-            _ => {}
-        }
+        // prompt for the rest of input
+        print!(">");
         io::stdout().flush();
         argstr = String::from("");
         io::stdin().read_line(&mut argstr).unwrap();
