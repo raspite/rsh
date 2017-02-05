@@ -1,29 +1,61 @@
 pub mod builtins;
+pub mod utils;
+
+use std::env;
+use std::path::PathBuf;
+
+use std::io;
+use std::io::Write;
 
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::io;
-use std::io::{Read, Write};
 use std::collections::hash_map::Entry;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct State {
     cwd: PathBuf,
-    environment: HashMap<String, String>,
+    variables: HashMap<String, String>,
     aliases: HashMap<String, String>,
     argv: Vec<String>,
     argc: usize,
+    exit_status: i32,
 }
 
 impl State {
     pub fn new(cwd: String) -> State {
         State {
-            cwd: PathBuf::from(cwd),
-            environment: HashMap::new(),
+            cwd: utils::make_absolute(PathBuf::from(cwd)).unwrap(),
+            variables: HashMap::new(),
             aliases: HashMap::new(),
             argv: Vec::new(),
             argc: 0,
+            exit_status: 0,
         }
+    }
+
+    pub fn default() -> State {
+        match env::current_dir() {
+            Ok(cwd) => {
+                State {
+                    cwd: cwd,
+                    variables: HashMap::new(),
+                    aliases: HashMap::new(),
+                    argv: Vec::new(),
+                    argc: 0,
+                    exit_status: 0,
+                }
+            }
+            Err(e) => panic!(e),
+        }
+    }
+
+    pub fn env<'a>(&'a mut self, key: String, value: String) -> &'a mut State {
+        self.variables.insert(key, value);
+        self
+    }
+
+    pub fn alias<'a>(&'a mut self, alias: String, value: String) -> &'a mut State {
+        self.aliases.insert(alias, value);
+        self
     }
 }
 
@@ -39,11 +71,15 @@ pub fn run(initial_state: State) {
         print!("{} -> ", s.cwd.to_str().unwrap());
 
         // this forces the prompt to print
-        io::stdout().flush();
+        io::stdout()
+            .flush()
+            .expect("unable to flush stdout");
 
         // read the user input
         let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
+        io::stdin()
+            .read_line(&mut input)
+            .expect("unable to read line from stdin");
 
         s.argv = parse_args(&input);
         s.argc = s.argv.len();
@@ -54,56 +90,151 @@ pub fn run(initial_state: State) {
         let first_arg = s.argv.get(0).unwrap().clone();
         if let Entry::Occupied(f) = builtins.entry(String::from(first_arg)) {
             let bn = f.get();
-            s = bn(s.clone());
+            s.exit_status = bn(&mut s);
+            // prompt for input again.
+            continue;
         }
     }
 }
 
-fn parse_args(args: &String) -> Vec<String> {
-    let mut result: Vec<String> = Vec::new();
+#[derive(PartialEq)]
+enum BuildType {
+    None,
+    Single,
+    Double,
+}
 
+struct ParseResult {
+    result: Vec<String>,
+    completed: bool,
+    build_string: String,
+    build_type: BuildType,
+}
+
+fn parse_args(args: &String) -> Vec<String> {
     if args.len() == 0 {
-        return result
+        return Vec::new();
     }
 
-    let mut building_string: bool = false;
-    let mut build_string: String = String::from("");
-    for string in args.split_whitespace() {
-        if string.starts_with("\"") {
-            // the string is surrounded by quotes - "word"
-            if string.ends_with("\"") {
-                build_string.push_str(string);
-                result.push(build_string);
+    let mut parse_result: ParseResult = ParseResult {
+        result: Vec::new(),
+        completed: false,
+        build_string: String::from(""),
+        build_type: BuildType::None,
+    };
 
-                building_string = false;
-                build_string = String::from("");
-            // the string only begins with quote - "word
-            } else {
-                building_string = true;
+    let mut argstr = args.clone();
 
-                build_string.push_str(string);
-                build_string.push(' ');
+    parse_string_into_vec(&argstr, &mut parse_result);
+
+    while !parse_result.completed {
+        // prompt for the rest of input
+        print!(">");
+        io::stdout().flush();
+        argstr = String::from("");
+        io::stdin().read_line(&mut argstr).unwrap();
+
+        parse_string_into_vec(&argstr, &mut parse_result);
+    }
+
+    let result: Vec<String> = parse_result.result
+        .into_iter()
+        .filter(|s| s.len() > 0)
+        .collect();
+
+    result
+}
+
+fn parse_string_into_vec(string: &String, parse_result: &mut ParseResult) {
+    let &mut ParseResult { ref mut build_string,
+                           ref mut build_type,
+                           ref mut completed,
+                           ref mut result } = parse_result;
+    let mut iter = string.chars().peekable();
+
+    while let Some(c) = iter.next() {
+        match c {
+            '\'' => {
+                match *build_type {
+                    BuildType::Single => {
+                        *build_type = BuildType::None;
+                        if iter.peek() == Some(&' ') {
+                            result.push(build_string.clone());
+                            *build_string = String::from("");
+                        }
+                    }
+
+                    BuildType::None => {
+                        *build_type = BuildType::Single;
+                    }
+
+                    _ => {
+                        build_string.push(c);
+                    }
+                }
             }
-        // the string ends with quote - word"
-        } else if string.ends_with("\"") {
-            build_string.push_str(string);
-            result.push(build_string);
 
-            building_string = false;
-            build_string = String::from("");
-        } else {
-            // the string is inside a quote section
-            if building_string {
-                build_string.push_str(string);
-                build_string.push(' ');
-            // the string is not inside a quote section
-            } else {
-                result.push(string.to_string());
+            '\"' => {
+                match *build_type {
+                    BuildType::Double => {
+                        *build_type = BuildType::None;
+                        if iter.peek() == Some(&' ') {
+                            result.push(build_string.clone());
+                            *build_string = String::from("");
+                        }
+                    }
+
+                    BuildType::None => {
+                        *build_type = BuildType::Double;
+                    }
+
+                    _ => {
+                        build_string.push(c);
+                    }
+                }
+            }
+
+            ' ' => {
+                match *build_type {
+                    BuildType::None => {
+                        result.push(build_string.clone());
+                        *build_string = String::from("");
+                    }
+
+                    _ => {
+                        build_string.push(c);
+                    }
+                }
+            }
+
+            '\n' => {
+                match *build_type {
+                    BuildType::None => {
+                        match iter.peek() {
+                            Some(_) => {
+                                build_string.push(c);
+                            }
+                            None => {}
+                        }
+                    }
+                    _ => {
+                        build_string.push(c);
+                    }
+                }
+            }
+
+            _ => {
+                build_string.push(c);
             }
         }
     }
 
-    result
+    if *build_type == BuildType::None {
+        *completed = true;
+        if build_string.len() > 0 {
+            result.push(build_string.clone());
+        }
+    }
 }
 
 #[test]
@@ -122,24 +253,73 @@ fn parse_args_test() {
         assert_eq!(result, expected);
     }
 
-    // parse single-word string inside parens
+    // parse single-word string inside quotes
     {
-        let expected = vec!["\"echo\"".to_string()];
+        let expected = vec!["echo".to_string()];
         let result = parse_args(&String::from("\"echo\""));
         assert_eq!(result, expected);
     }
 
-    // parse multi-word string with closed parens section
+    // parse multi-word string with closed quotes section
     {
-        let expected = vec!["echo".to_string(), "-n".into(), "\"Hello Dear World\"".into()];
+        let expected = vec!["echo".to_string(), "-n".into(), "Hello Dear World".into()];
         let result = parse_args(&String::from("echo -n \"Hello Dear World\""));
         assert_eq!(result, expected);
     }
 
-    // parse multi-word string with multiple closed parents sections
+    // parse multi-word string with multiple closed quotes sections
     {
-        let expected = vec!["echo".to_string(), "\"Hello\"".into(), "\"Dear World\"".into()];
+        let expected = vec!["echo".to_string(), "Hello".into(), "Dear World".into()];
         let result = parse_args(&String::from("echo \"Hello\" \"Dear World\""));
+        assert_eq!(result, expected);
+    }
+
+    // parse multi-word string with no spaces around single quotes
+    {
+        let expected = vec!["echo".to_string(), "helloworld".into()];
+        let result = parse_args(&String::from("echo 'hello'world"));
+        assert_eq!(result, expected);
+    }
+
+    // parse multi-word string with no spaces around double quotes
+    {
+        let expected = vec!["echo".to_string(), "helloworld".into()];
+        let result = parse_args(&String::from("echo \"hello\"world"));
+        assert_eq!(result, expected);
+    }
+
+    // allow double quotes inside single quotes
+    {
+        let expected = vec!["\"".to_string()];
+        let result = parse_args(&String::from("'\"'"));
+        assert_eq!(result, expected);
+    }
+
+    // allow single quotes inside double quotes
+    {
+        let expected = vec!["\'".to_string()];
+        let result = parse_args(&String::from("\"\'\""));
+        assert_eq!(result, expected);
+    }
+
+    // handle multiple quote sections in succession
+    {
+        let expected = vec!["echo".to_string(), "hello world how are you".into()];
+        let result = parse_args(&String::from("echo \"hello world\"\' how are you\'"));
+        assert_eq!(result, expected);
+    }
+
+    // preserve newlines
+    {
+        let expected = vec!["echo".to_string(), "hello\nworld".into()];
+        let result = parse_args(&String::from("echo \"hello\nworld\""));
+        assert_eq!(result, expected);
+    }
+
+    // remove final newline
+    {
+        let expected = vec!["echo".to_string()];
+        let result = parse_args(&String::from("echo\n"));
         assert_eq!(result, expected);
     }
 }
