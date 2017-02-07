@@ -7,7 +7,4 @@ pub fn exit(s: &mut State) -> i32 {
         Some(x) => process::exit(x.parse::<i32>().expect("Not a valid exit code")),
         None => process::exit(0),
     };
-
-    // ARE YOU HAPPY NOW RUSTC?!?!
-    0
 }

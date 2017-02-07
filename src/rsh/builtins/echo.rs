@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use rsh::State;
 
 pub fn echo(s: &mut State) -> i32 {
