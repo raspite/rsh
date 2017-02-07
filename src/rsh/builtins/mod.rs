@@ -115,4 +115,15 @@ mod test {
 
         assert_eq!(i, 0);
     }
+
+    #[test]
+    fn test_pwd() {
+        let mut s = State::default();
+
+        s.argv = vec!["pwd".to_string()];
+
+        let i = pwd(&mut s);
+
+        assert_eq!(i, 0);
+    }
 }
