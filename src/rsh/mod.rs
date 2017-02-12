@@ -5,12 +5,13 @@ pub mod read_line;
 
 use std::env;
 use std::path::{Path, PathBuf};
+use std::fmt;
 use std::io;
 use std::io::Write;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct State {
     cwd: PathBuf,
     variables: HashMap<String, String>,
@@ -18,6 +19,27 @@ pub struct State {
     argv: Vec<String>,
     argc: usize,
     exit_status: i32,
+}
+
+impl fmt::Debug for State {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+               "\nState {{
+\tcwd: {},
+\tvariables: {:?},
+\taliases: {:?},
+\targv: {:?}
+\targc: {}
+\texit_status: {}
+}}
+",
+               self.cwd.display(),
+               self.variables,
+               self.aliases,
+               self.argv,
+               self.argc,
+               self.exit_status)
+    }
 }
 
 impl State {
@@ -72,8 +94,8 @@ impl State {
 }
 
 pub fn run(initial_state: State) {
-    let mut builtins = builtins::load();
     let mut s = initial_state.clone();
+    let mut builtins = builtins::load();
     let i = read_line::Input::from(&s);
 
     println!("Welcome to rsh! {:?}", s);
