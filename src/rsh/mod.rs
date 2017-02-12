@@ -24,7 +24,7 @@ pub struct State {
 impl fmt::Debug for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-               "\nState {{
+               "State {{
 \tcwd: {},
 \tvariables: {:?},
 \taliases: {:?},
@@ -108,7 +108,7 @@ pub fn run(initial_state: State) {
         s.argc = s.argv.len();
 
         print!("\n");
-        println!("Input: {}\nState: {:?}", input, s);
+        println!("Input: {} {:?}", input, s);
 
         let first_arg = s.argv.get(0).unwrap().clone();
         if let Entry::Occupied(f) = builtins.entry(String::from(first_arg)) {
