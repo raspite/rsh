@@ -1,4 +1,23 @@
 [root]
 name = "rsh"
 version = "0.1.0"
+dependencies = [
+ "radix_trie 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
+[[package]]
+name = "nibble_vec"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "radix_trie"
+version = "0.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "nibble_vec 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[metadata]
+"checksum nibble_vec 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "62e678237a4c70c5f2b917cefd7d080dfbf800421f06e8a59d4e28ef5130fd9e"
+"checksum radix_trie 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)" = "8d2bfd80b28325215b837fc9459a49f632a80e52d9b134934160d586e4803dff"
