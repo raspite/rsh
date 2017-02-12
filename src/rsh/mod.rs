@@ -1,12 +1,12 @@
 pub mod builtins;
 pub mod utils;
+pub mod read_line;
+// pub mod exec;
 
 use std::env;
-use std::path::PathBuf;
-
+use std::path::{Path, PathBuf};
 use std::io;
 use std::io::Write;
-
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
@@ -48,6 +48,18 @@ impl State {
         }
     }
 
+    pub fn exec_paths(&self) -> Vec<PathBuf> {
+        let path = if let Some(s) = self.variables.get("PATH") {
+            s.clone()
+        } else {
+            "".to_string()
+        };
+
+        path.split(";")
+            .map(|x| Path::new(x).to_path_buf())
+            .collect()
+    }
+
     pub fn env<'a>(&'a mut self, key: String, value: String) -> &'a mut State {
         self.variables.insert(key, value);
         self
@@ -62,24 +74,13 @@ impl State {
 pub fn run(initial_state: State) {
     let mut builtins = builtins::load();
     let mut s = initial_state.clone();
+    let i = read_line::Input::from(&s);
 
     println!("Welcome to rsh! {:?}", s);
 
     loop {
 
-        print!("\n");
-        print!("{} -> ", s.cwd.to_str().unwrap());
-
-        // this forces the prompt to print
-        io::stdout()
-            .flush()
-            .expect("unable to flush stdout");
-
-        // read the user input
-        let mut input = String::new();
-        io::stdin()
-            .read_line(&mut input)
-            .expect("unable to read line from stdin");
+        let input = i.prompt(format!("{} -> ", s.cwd.display()));
 
         s.argv = parse_args(&input);
         s.argc = s.argv.len();
