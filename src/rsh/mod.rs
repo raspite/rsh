@@ -14,7 +14,6 @@ use std::collections::hash_map::Entry;
 #[derive(Clone)]
 pub struct State {
     cwd: PathBuf,
-    variables: HashMap<String, String>,
     aliases: HashMap<String, String>,
     argv: Vec<String>,
     argc: usize,
@@ -26,7 +25,6 @@ impl fmt::Debug for State {
         write!(f,
                "State {{
 \tcwd: {},
-\tvariables: {:?},
 \taliases: {:?},
 \targv: {:?}
 \targc: {}
@@ -34,7 +32,6 @@ impl fmt::Debug for State {
 }}
 ",
                self.cwd.display(),
-               self.variables,
                self.aliases,
                self.argv,
                self.argc,
@@ -44,13 +41,8 @@ impl fmt::Debug for State {
 
 impl State {
     pub fn new(cwd: String) -> State {
-        let mut vars = HashMap::new();
-        vars.insert("PATH".to_string(),
-                    "/usr/bin;/usr/local/bin;/bin;/sbin".to_string());
-
         State {
             cwd: utils::make_absolute(PathBuf::from(cwd)).unwrap(),
-            variables: vars.clone(),
             aliases: HashMap::new(),
             argv: Vec::new(),
             argc: 0,
@@ -61,13 +53,8 @@ impl State {
     pub fn default() -> State {
         match env::current_dir() {
             Ok(cwd) => {
-                let mut vars = HashMap::new();
-                vars.insert("PATH".to_string(),
-                            "/usr/bin;/usr/local/bin;/bin;/sbin".to_string());
-
                 State {
                     cwd: cwd,
-                    variables: vars.clone(),
                     aliases: HashMap::new(),
                     argv: Vec::new(),
                     argc: 0,
@@ -103,16 +90,6 @@ impl State {
         path.split(";")
             .map(|x| Path::new(x).to_path_buf())
             .collect()
-    }
-
-    pub fn env<'a>(&'a mut self, key: String, value: String) -> &'a mut State {
-        self.variables.insert(key, value);
-        self
-    }
-
-    pub fn alias<'a>(&'a mut self, alias: String, value: String) -> &'a mut State {
-        self.aliases.insert(alias, value);
-        self
     }
 }
 
