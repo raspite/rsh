@@ -1,7 +1,7 @@
 pub mod builtins;
 pub mod utils;
 pub mod read_line;
-// pub mod exec;
+pub mod exec;
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -44,9 +44,13 @@ impl fmt::Debug for State {
 
 impl State {
     pub fn new(cwd: String) -> State {
+        let mut vars = HashMap::new();
+        vars.insert("PATH".to_string(),
+                    "/usr/bin;/usr/local/bin;/bin;/sbin".to_string());
+
         State {
             cwd: utils::make_absolute(PathBuf::from(cwd)).unwrap(),
-            variables: HashMap::new(),
+            variables: vars.clone(),
             aliases: HashMap::new(),
             argv: Vec::new(),
             argc: 0,
@@ -57,9 +61,13 @@ impl State {
     pub fn default() -> State {
         match env::current_dir() {
             Ok(cwd) => {
+                let mut vars = HashMap::new();
+                vars.insert("PATH".to_string(),
+                            "/usr/bin;/usr/local/bin;/bin;/sbin".to_string());
+
                 State {
                     cwd: cwd,
-                    variables: HashMap::new(),
+                    variables: vars.clone(),
                     aliases: HashMap::new(),
                     argv: Vec::new(),
                     argc: 0,
@@ -117,6 +125,9 @@ pub fn run(initial_state: State) {
             // prompt for input again.
             continue;
         }
+
+        // else try to run the command
+        exec::exec(&s);
     }
 }
 
