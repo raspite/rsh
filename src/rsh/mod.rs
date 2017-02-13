@@ -78,8 +78,23 @@ impl State {
         }
     }
 
+
+    #[cfg(any(unix))]
     pub fn exec_paths(&self) -> Vec<PathBuf> {
-        let path = if let Some(s) = self.variables.get("PATH") {
+        let path = if let Ok(s) = env::var("PATH") {
+            s.clone()
+        } else {
+            "".to_string()
+        };
+
+        path.split(":")
+            .map(|x| Path::new(x).to_path_buf())
+            .collect()
+    }
+
+    #[cfg(windows)]
+    pub fn exec_paths(&self) -> Vec<PathBuf> {
+        let path = if let Ok(s) = env::var("PATH") {
             s.clone()
         } else {
             "".to_string()
