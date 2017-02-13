@@ -5,11 +5,9 @@ mod set;
 mod pwd;
 mod exit;
 
-use std::path::PathBuf;
 use std::collections::HashMap;
 
 use rsh::State;
-use rsh::utils;
 
 pub use self::cd::cd;
 pub use self::ls::ls;
