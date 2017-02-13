@@ -10,7 +10,13 @@ pub fn exec(s: &State) -> i32 {
     let exec_name = args.next().unwrap().as_str();
 
     'outer: for path in s.exec_paths().iter() {
-        for entry in path.read_dir().unwrap() {
+        let read_dir = path.read_dir();
+
+        if read_dir.is_err() {
+            continue;
+        }
+
+        for entry in read_dir.unwrap() {
             if let Ok(e) = entry {
                 if e.file_name() == *exec_name {
                     exec_path = Some(e.path().clone());
