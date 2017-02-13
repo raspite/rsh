@@ -51,8 +51,8 @@ impl State {
     }
 
     pub fn default() -> State {
-        match env::current_dir() {
-            Ok(cwd) => {
+        match env::home_dir() {
+            Some(cwd) => {
                 State {
                     cwd: cwd,
                     aliases: HashMap::new(),
@@ -61,7 +61,7 @@ impl State {
                     exit_status: 0,
                 }
             }
-            Err(e) => panic!(e),
+            None => panic!("Unable to determine home directory."),
         }
     }
 
