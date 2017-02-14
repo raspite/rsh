@@ -1,3 +1,4 @@
+extern crate term;
 extern crate radix_trie;
 
 pub mod rsh;

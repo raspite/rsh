@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::io::Write;
 
 use rsh::State;
 
 // TODO "Error handling mother trucker, do you speak it?"
-pub fn exec(s: &State) -> i32 {
+pub fn exec(s: &mut State) -> i32 {
     let mut args = s.argv.iter();
     let mut exec_path: Option<PathBuf> = None;
     let exec_name = args.next().unwrap().as_str();
@@ -27,7 +28,7 @@ pub fn exec(s: &State) -> i32 {
     }
 
     if exec_path.is_none() {
-        println!("No such command: {}", exec_name);
+        writeln!(s.term, "No such command: {}", exec_name);
         return 1000;
     }
 
@@ -40,14 +41,17 @@ pub fn exec(s: &State) -> i32 {
         .spawn();
 
     if command.is_err() {
-        println!("Error running {}: {}", exec_name, command.err().unwrap());
+        writeln!(&mut s.term,
+                 "Error running {}: {}",
+                 exec_name,
+                 command.err().unwrap());
         return 1000;
     }
 
     match command.unwrap().wait() {
         Ok(exit) => if let Some(i) = exit.code() { i } else { 1000 },
         Err(e) => {
-            println!("Error starting {}: {}", exec_name, e);
+            writeln!(s.term, "Error starting {}: {}", exec_name, e);
             1000
         }
     }

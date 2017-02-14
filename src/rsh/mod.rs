@@ -2,6 +2,7 @@ pub mod builtins;
 pub mod utils;
 pub mod read_line;
 pub mod exec;
+pub mod term;
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -10,52 +11,76 @@ use std::io;
 use std::io::Write;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::clone::Clone;
 
-#[derive(Clone)]
-pub struct State {
+pub struct State<'a> {
     cwd: PathBuf,
     aliases: HashMap<String, String>,
+    term: &'a mut term::Term,
     argv: Vec<String>,
     argc: usize,
     exit_status: i32,
 }
 
-impl fmt::Debug for State {
+impl<'a> Clone for State<'a> {
+    fn clone(&self) -> State<'a> {
+        let t: &'a term::Term = &term::Term::default();
+
+        State {
+            cwd: self.cwd.clone(),
+            aliases: self.aliases.clone(),
+            term: &mut t,
+            argv: Vec::new(),
+            argc: 0,
+            exit_status: 0,
+        }
+    }
+}
+
+impl<'a> fmt::Debug for State<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
                "State {{
 \tcwd: {},
 \taliases: {:?},
-\targv: {:?}
-\targc: {}
-\texit_status: {}
+\tterm: {:?},
+\targv: {:?},
+\targc: {},
+\texit_status: {},
 }}
 ",
                self.cwd.display(),
                self.aliases,
+               self.term,
                self.argv,
                self.argc,
                self.exit_status)
     }
 }
 
-impl State {
-    pub fn new(cwd: String) -> State {
+impl<'a> State<'a> {
+    pub fn new(cwd: String) -> State<'a> {
+        let t: &'a term::Term = &term::Term::default();
+
         State {
             cwd: utils::make_absolute(PathBuf::from(cwd)).unwrap(),
             aliases: HashMap::new(),
+            term: &mut t,
             argv: Vec::new(),
             argc: 0,
             exit_status: 0,
         }
     }
 
-    pub fn default() -> State {
+    pub fn default() -> State<'a> {
         match env::home_dir() {
             Some(cwd) => {
+                let t: &'a term::Term = &term::Term::default();
+
                 State {
                     cwd: cwd,
                     aliases: HashMap::new(),
+                    term: &mut t,
                     argv: Vec::new(),
                     argc: 0,
                     exit_status: 0,
@@ -107,7 +132,7 @@ pub fn run(initial_state: State) {
         s.argv = parse_args(&input);
         s.argc = s.argv.len();
 
-        print!("\n");
+        write!(s.term, "\n");
         println!("Input: {} {:?}", input, s);
 
         let first_arg = s.argv.get(0).unwrap().clone();
@@ -119,7 +144,7 @@ pub fn run(initial_state: State) {
         }
 
         // else try to run the command
-        exec::exec(&s);
+        exec::exec(&mut s);
     }
 }
 
