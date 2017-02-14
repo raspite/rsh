@@ -21,8 +21,7 @@ impl Input {
         for path in s.exec_paths().iter() {
             let items = path.iter().collect::<Vec<&OsStr>>();
             let mut strings = items.iter()
-                .map(|x| x.to_str().unwrap_or(""))
-                .map(|x| x.to_string())
+                .map(|x| x.to_str().unwrap_or("").to_string())
                 .collect::<Vec<String>>();
 
             strs.append(&mut strings);
