@@ -233,6 +233,20 @@ fn parse_string_into_vec(string: &String, parse_result: &mut ParseResult) {
                 }
             }
 
+            '=' => {
+                match *build_type {
+                    BuildType::None => {
+                        result.push(build_string.clone());
+                        result.push(String::from("="));
+                        *build_string = String::from("");
+                    }
+
+                    _ => {
+                        build_string.push(c);
+                    }
+                }
+            }
+
             '\n' => {
                 match *build_type {
                     BuildType::None => {
@@ -332,6 +346,13 @@ fn parse_args_test() {
     {
         let expected = vec!["echo".to_string(), "hello world how are you".into()];
         let result = parse_args(&String::from("echo \"hello world\"\' how are you\'"));
+        assert_eq!(result, expected);
+    }
+
+    // parse equals signs
+    {
+        let expected = vec!["alias".to_string(), "ll".into(), "=".into(), "ls -a".into()];
+        let result = parse_args(&String::from("alias ll=\"ls -a\""));
         assert_eq!(result, expected);
     }
 
