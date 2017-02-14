@@ -1,30 +1,48 @@
 pub mod builtins;
 pub mod utils;
+pub mod read_line;
+pub mod exec;
 
 use std::env;
-use std::path::PathBuf;
-
+use std::path::{Path, PathBuf};
+use std::fmt;
 use std::io;
 use std::io::Write;
-
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct State {
     cwd: PathBuf,
-    variables: HashMap<String, String>,
     aliases: HashMap<String, String>,
     argv: Vec<String>,
     argc: usize,
     exit_status: i32,
 }
 
+impl fmt::Debug for State {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+               "State {{
+\tcwd: {},
+\taliases: {:?},
+\targv: {:?}
+\targc: {}
+\texit_status: {}
+}}
+",
+               self.cwd.display(),
+               self.aliases,
+               self.argv,
+               self.argc,
+               self.exit_status)
+    }
+}
+
 impl State {
     pub fn new(cwd: String) -> State {
         State {
             cwd: utils::make_absolute(PathBuf::from(cwd)).unwrap(),
-            variables: HashMap::new(),
             aliases: HashMap::new(),
             argv: Vec::new(),
             argc: 0,
@@ -33,59 +51,64 @@ impl State {
     }
 
     pub fn default() -> State {
-        match env::current_dir() {
-            Ok(cwd) => {
+        match env::home_dir() {
+            Some(cwd) => {
                 State {
                     cwd: cwd,
-                    variables: HashMap::new(),
                     aliases: HashMap::new(),
                     argv: Vec::new(),
                     argc: 0,
                     exit_status: 0,
                 }
             }
-            Err(e) => panic!(e),
+            None => panic!("Unable to determine home directory."),
         }
     }
 
-    pub fn env<'a>(&'a mut self, key: String, value: String) -> &'a mut State {
-        self.variables.insert(key, value);
-        self
+
+    #[cfg(any(unix))]
+    pub fn exec_paths(&self) -> Vec<PathBuf> {
+        let path = if let Ok(s) = env::var("PATH") {
+            s.clone()
+        } else {
+            "".to_string()
+        };
+
+        path.split(":")
+            .map(|x| Path::new(x).to_path_buf())
+            .collect()
     }
 
-    pub fn alias<'a>(&'a mut self, alias: String, value: String) -> &'a mut State {
-        self.aliases.insert(alias, value);
-        self
+    #[cfg(windows)]
+    pub fn exec_paths(&self) -> Vec<PathBuf> {
+        let path = if let Ok(s) = env::var("PATH") {
+            s.clone()
+        } else {
+            "".to_string()
+        };
+
+        path.split(";")
+            .map(|x| Path::new(x).to_path_buf())
+            .collect()
     }
 }
 
 pub fn run(initial_state: State) {
-    let mut builtins = builtins::load();
     let mut s = initial_state.clone();
+    let mut builtins = builtins::load();
+    let i = read_line::Input::from(&s);
 
     println!("Welcome to rsh! {:?}", s);
 
     loop {
 
-        print!("\n");
-        print!("{} -> ", s.cwd.to_str().unwrap());
-
-        // this forces the prompt to print
-        io::stdout()
-            .flush()
-            .expect("unable to flush stdout");
-
-        // read the user input
-        let mut input = String::new();
-        io::stdin()
-            .read_line(&mut input)
-            .expect("unable to read line from stdin");
+        let input = i.prompt(format!("{} -> ", s.cwd.display()));
 
         s.argv = parse_args(&input);
         s.argc = s.argv.len();
 
         print!("\n");
-        println!("Input: {}\nState: {:?}", input, s);
+        println!("Input: {} {:?}", input, s);
 
         let first_arg = s.argv.get(0).unwrap().clone();
         if let Entry::Occupied(f) = builtins.entry(String::from(first_arg)) {
@@ -94,6 +117,9 @@ pub fn run(initial_state: State) {
             // prompt for input again.
             continue;
         }
+
+        // else try to run the command
+        exec::exec(&s);
     }
 }
 

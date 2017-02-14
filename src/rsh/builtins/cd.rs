@@ -1,3 +1,4 @@
+use std::env;
 use std::path::PathBuf;
 
 use rsh::State;
@@ -9,9 +10,19 @@ pub fn cd(s: &mut State) -> i32 {
     match s.argv.get(1) {
         Some(x) => new_path = PathBuf::from(x),
         None => {
-            new_path = PathBuf::from(s.variables
-                .get("HOME")
-                .unwrap_or(&"".to_string()))
+            let mut home = "".to_string();
+
+            if cfg!(windows) {
+                if let Ok(val) = env::var("USERPROFILE") {
+                    home = val;
+                }
+            } else {
+                if let Ok(val) = env::var("HOME") {
+                    home = val;
+                }
+            }
+
+            new_path = PathBuf::from(home);
         }
     };
 

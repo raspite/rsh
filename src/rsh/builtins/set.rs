@@ -1,3 +1,5 @@
+use std::env;
+
 use rsh::State;
 
 pub fn set(s: &mut State) -> i32 {
@@ -13,7 +15,7 @@ pub fn set(s: &mut State) -> i32 {
     let var = var_name.unwrap().clone();
     let val = value.unwrap().clone();
 
-    s.variables.insert(var.to_string(), val.to_string());
+    env::set_var(var, val);
 
     0
 }
@@ -21,7 +23,7 @@ pub fn set(s: &mut State) -> i32 {
 pub fn unset(s: &mut State) -> i32 {
     match s.argv.get(1) {
         Some(var) => {
-            s.variables.remove(var);
+            env::remove_var(var);
             0
         }
         None => {
@@ -34,11 +36,9 @@ pub fn unset(s: &mut State) -> i32 {
 pub fn get(s: &mut State) -> i32 {
     match s.argv.get(1) {
         Some(var) => {
-            s.variables
-                .get(var)
-                .map(|val| {
-                    println!("{}", val);
-                });
+            if let Ok(val) = env::var(var) {
+                println!("{}", val);
+            }
 
             0
         }

@@ -5,9 +5,14 @@ use std::env;
 fn main() {
     let mut argv = env::args();
 
-    let path = argv.next()
-        .unwrap_or(".".to_string());
+    // skip argv[0]
+    argv.next();
 
-    let s = rsh::State::new(path);
+    let s = if let Some(path) = argv.next() {
+        rsh::State::new(path)
+    } else {
+        rsh::State::default()
+    };
+
     rsh::run(s)
 }

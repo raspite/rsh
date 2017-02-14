@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Mathew Robinson <mathew.robinson3114@gmail.com>"]
 
 [dependencies]
+radix_trie = "0.0.9"
